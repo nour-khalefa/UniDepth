@@ -10,3 +10,12 @@ __pycache__/
 
 # package
 unidepth.egg-info
+
+assets/
+
+*.out
+*.slurm
+*.csv
+*.png
+
+config.py

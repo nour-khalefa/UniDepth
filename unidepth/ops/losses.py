@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import unidepth.ops as ops
 
 FNS = {
     "sqrt": torch.sqrt,
@@ -426,3 +427,64 @@ class SelfCons(nn.Module):
             input_fn=config["input_fn"],
         )
         return obj
+
+
+# class HeightLoss(nn.Module):
+#     def __init__(self, fy, tolerance=0.1):
+#         super().__init__()
+#         self.fy = fy
+#         self.tolerance = tolerance
+
+#     def forward(self, depth_pred, height_target, masks):
+#         losses = []
+#         for i, mask in enumerate(masks):
+#             # Ensure mask and depth maps are on the same devic
+
+#             height_pred = ops.calculate_height(mask, depth_pred, self.fy)
+#             print(height_pred)
+#             if height_pred is not None and height_target[i] is not None:
+#                 height_pred_tensor = torch.tensor(height_pred, device=depth_pred.device, requires_grad=True)
+#                 height_target_tensor = torch.tensor(height_target[i], device=depth_pred.device, requires_grad=False)
+                
+#                 # Apply tolerance
+#                 loss = torch.clamp(torch.abs(height_pred_tensor - height_target_tensor) - self.tolerance, min=0.0)
+#                 losses.append(loss)
+        
+#         if len(losses) == 0:
+#             return torch.tensor(0.0, requires_grad=True, device=depth_pred.device)
+        
+#         total_loss = torch.stack(losses).mean()
+#         return total_loss
+
+class HeightLoss(nn.Module):
+    def __init__(self, tolerance=0.1):
+        super().__init__()
+        self.tolerance = tolerance
+
+    def forward(self, depth_pred, height_target, masks,fy):
+        losses = []
+        batch_size = len(masks)
+        
+        for i in range(batch_size):
+            current_sample_masks = masks[i]
+            current_depth_pred = depth_pred[i]
+            
+            for mask in current_sample_masks:
+                # Calculate height for each mask in the sample
+                losses_for_sample=[]
+                height_pred = ops.calculate_height(mask, current_depth_pred, fy)
+                print(height_pred)
+                if height_pred is not None and height_target[i] is not None:
+                    height_pred_tensor = torch.tensor(height_pred, device=depth_pred.device, requires_grad=True)
+                    height_target_tensor = torch.tensor(height_target[i], device=depth_pred.device, requires_grad=False)
+                    
+                    # Apply tolerance
+                    loss = torch.clamp(torch.abs(height_pred_tensor - height_target_tensor) - self.tolerance, min=0.0)
+                    losses_for_sample.append(loss)
+            losses.append(torch.stack(losses_for_sample).mean())
+        
+        if len(losses) == 0:
+            return torch.tensor(0.0, requires_grad=True, device=depth_pred.device)
+        
+        total_loss = torch.stack(losses).mean()
+        return total_loss

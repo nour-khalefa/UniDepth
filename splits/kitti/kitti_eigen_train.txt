@@ -1,0 +1,1 @@
+2011_09_26/2011_09_26_drive_0057_sync/image_02/data/0000000116.png data_depth_annotated/train/2011_09_26_drive_0057_sync/proj_depth/groundtruth/image_02/0000000116.png 721.5377
